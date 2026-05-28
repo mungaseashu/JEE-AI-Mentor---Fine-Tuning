@@ -1,0 +1,65 @@
+# ==============================================================================
+# JEE MENTOR AI - PROJECT-WIDE SYSTEM AND DEPENDENCY GITIGNORE
+# ==============================================================================
+
+# Python temporary files, compiled bytecode, and caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+.mypy_cache/
+.ruff_cache/
+
+# Node/JavaScript client build outputs and dependencies
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/package-lock.json
+frontend/.vite/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+# Environment and sensitive keys (Never push to remote repositories!)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+frontend/.env
+frontend/.env.local
+
+# Databases and persistent store files
+backend/jee_mentor.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Semantic vector stores and data directories
+data/
+rag/data/
+chromadb/
+.chroma/
+
+# Fine-tuning weights, checkpoints, HuggingFace model cache directories
+models/
+training/models/
+runs/
+.cache/
+huggingface/
+.huggingface/
+
+# Generated outputs and local assets
+backend/plots/*.png
+backend/plots/*.jpg
+
+# System operational files
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log

@@ -1,0 +1,85 @@
+# ==============================================================================
+# JEE MENTOR AI - DOCKER COMPOSE MULTI-CONTAINER ARCHITECTURE
+# ==============================================================================
+version: "3.8"
+
+services:
+  # Database Service (PostgreSQL)
+  postgres:
+    image: postgres:15-alpine
+    container_name: jeementor_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: jee_mentor
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d jee_mentor"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Cache Service (Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: jeementor_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Core API Service (FastAPI)
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: jeementor_backend
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/jee_mentor
+      - REDIS_URL=redis://redis:6379/0
+      - CHROMA_DB_PATH=/app/data/chroma
+      - PORT=8000
+      - ENVIRONMENT=production
+      - JWT_SECRET=supersecretjwtsecretkeychangeinproduction123456!
+      - JWT_ALGORITHM=HS256
+      - BASE_MODEL_NAME=TinyLlama/TinyLlama-1.1B-Chat-v1.0
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/app/data/chroma
+      - model_adapters:/app/models/adapters
+      - ./backend/plots:/app/backend/plots
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Client Service (React Vite + Nginx)
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    container_name: jeementor_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+  chroma_data:
+  model_adapters:

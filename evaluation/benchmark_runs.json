@@ -1,0 +1,35 @@
+[
+  {
+    "id": "bench_1",
+    "subject": "Mathematics",
+    "topic": "Definite Integration",
+    "difficulty": "Easy",
+    "input": "Evaluate the definite integral: $\\int_0^{\\pi/2} \\frac{\\sin^{3} x}{\\sin^{3} x + \\cos^{3} x} \\, dx$.",
+    "ground_truth_output": "We solve this definite integral using properties of definite integrals (specifically the King's Rule).\n\n### Step 1: Let the integral be $I$\n$$I = \\int_0^{\\pi/2} \\frac{\\sin^{3} x}{\\sin^{3} x + \\cos^{3} x} \\, dx \\quad \\text{--- (Equation 1)}$$\n\n### Step 2: Apply the property $\\int_a^b f(x) \\, dx = \\int_a^b f(a+b-x) \\, dx$\nHere, $a = 0$ and $b = \\pi/2$. So we replace $x$ with $(\\pi/2 - x)$:\n$$I = \\int_0^{\\pi/2} \\frac{\\sin^{3} (\\pi/2 - x)}{\\sin^{3} (\\pi/2 - x) + \\cos^{3} (\\pi/2 - x)} \\, dx$$\n\nSince $\\sin(\\pi/2 - x) = \\cos x$ and $\\cos(\\pi/2 - x) = \\sin x$, we get:\n$$I = \\int_0^{\\pi/2} \\frac{\\cos^{3} x}{\\cos^{3} x + \\sin^{3} x} \\, dx \\quad \\text{--- (Equation 2)}$$\n\n### Step 3: Add Equation 1 and Equation 2\n$$2I = \\int_0^{\\pi/2} \\frac{\\sin^{3} x + \\cos^{3} x}{\\sin^{3} x + \\cos^{3} x} \\, dx$$\n$$2I = \\int_0^{\\pi/2} 1 \\, dx$$\n$$2I = [x]_0^{\\pi/2}$$\n$$2I = \\frac{\\pi}{2} - 0$$\n$$I = \\frac{\\pi}{4}$$\n\n### Conclusion\nThe value of the definite integral is **$\\frac{\\pi}{4}$**.",
+    "predicted_output": "Welcome to **JEE Mentor AI**! As your personalized tutor, I'm here to assist you with complex doubts in **Physics**, **Chemistry**, and **Mathematics**.\n\nTo help you best, you can:\n- Paste a complex problem containing formulas.\n- Upload an image of a handwritten query using the **OCR Solver**.\n- Generate personalized **Mock Tests** to identify your weak topics.\n\nHow can I assist your IIT-JEE preparation today? ",
+    "formulas_used": [],
+    "latency_ms": 2810.68
+  },
+  {
+    "id": "bench_2",
+    "subject": "Mathematics",
+    "topic": "Complex Numbers",
+    "difficulty": "Hard",
+    "input": "If $z = x + iy$ is a complex number satisfying $|z - 701| = 118$, find the minimum value of $|z - 1022 - 365i|$.",
+    "ground_truth_output": "This problem is best solved geometrically using the representation of complex numbers in the Argand plane.\n\n### Step 1: Geometric interpretation of the given equation\nThe equation $|z - 701| = 118$ represents a circle $C$ in the complex plane with:\n- Center $C_0 = (701, 0)$\n- Radius $R = 118$\n\n### Step 2: Geometric interpretation of the target expression\nThe expression $|z - (1022 + 365i)|$ represents the distance from a point $z$ on the circle $C$ to a fixed point $P = (1022, 365)$.\n\n### Step 3: Calculate the distance from center $C_0$ to point $P$\n$$d_{center} = \\sqrt{( 1022 - 701 )^2 + ( 365 - 0 )^2}$$\n$$d_{center} = \\sqrt{( 321 )^2 + 365^2} = \\sqrt{103041 + 133225} = \\sqrt{236266} = 486.07$$\n\n### Step 4: Find the minimum distance\nThe minimum distance from a point on the circle to the point $P$ lies along the line connecting the center $C_0$ to $P$.\n- Minimum Distance $d_{min} = |d_{center} - R|$\n- Substituting values: $d_{min} = |486.07 - 118| = 368.07$\n\n### Conclusion\nThe minimum value of $|z - 1022 - 365i|$ is **368.07**.",
+    "predicted_output": "Welcome to **JEE Mentor AI**! As your personalized tutor, I'm here to assist you with complex doubts in **Physics**, **Chemistry**, and **Mathematics**.\n\nTo help you best, you can:\n- Paste a complex problem containing formulas.\n- Upload an image of a handwritten query using the **OCR Solver**.\n- Generate personalized **Mock Tests** to identify your weak topics.\n\nHow can I assist your IIT-JEE preparation today? ",
+    "formulas_used": [],
+    "latency_ms": 2807.09
+  },
+  {
+    "id": "bench_3",
+    "subject": "Physics",
+    "topic": "Electrostatics",
+    "difficulty": "Medium",
+    "input": "An infinite thin straight wire has a uniform linear charge density of $\\lambda = 473 \\times 10^{-6}$ C/m. Calculate the electric field intensity at a perpendicular distance of $r = 4.167$ m from the wire. (Take $\\epsilon_0 = 8.85 \\times 10^{-12}$ C$^2$/N.m$^2$)",
+    "ground_truth_output": "To find the electric field intensity due to an infinite linear charge, we use Gauss's Law.\n\n### Step 1: Identify the standard formula\nThe electric field $E$ at a perpendicular distance $r$ from a line charge with linear charge density $\\lambda$ is given by:\n$$E = \\frac{\\lambda}{2\\pi\\epsilon_0 r}$$\n\n### Step 2: Rewrite in terms of known constant $k = \\frac{1}{4\\pi\\epsilon_0} = 9 \\times 10^9$ N.m$^2$/C$^2$\n$$E = \\frac{2k\\lambda}{r}$$\n\n### Step 3: Substitute the given values\nGiven:\n- $\\lambda = 473 \\times 10^{-6}$ C/m\n- $r = 4.167$ m\n- $k = 9 \\times 10^9$ N.m$^2$/C$^2$\n\n$$E = \\frac{2 \\times (9 \\times 10^9) \\times (473 \\times 10^{-6})}{4.167}$$\n$$E = \\frac{8514 \\times 10^3}{4.167}$$\n$$E = 2043.20 \\times 10^3$ N/C\n\n### Conclusion\nThe electric field intensity at a distance of $4.167$ m is **$2043.20 \\times 10^3$ N/C**.",
+    "predicted_output": "To determine the electric field due to an infinite line charge at a distance $r$, we apply **Gauss's Law**.\n\n### Step 1: Gauss's Law formulation\nWe draw a cylindrical Gaussian surface of radius $r$ and length $L$ co-axial with the wire.\n$$\\oint \\vec{E} \\cdot d\\vec{A} = \\frac{q_{\\text{enclosed}}}{\\epsilon_0}$$\n\n### Step 2: Flux through the surface\nThe curved surface area of the cylinder is $2\\pi r L$. Since the electric field is radial everywhere, the flux through the flat circular ends is zero ($E \\perp dA$). Therefore:\n$$E \\cdot (2\\pi r L) = \\frac{\\lambda L}{\\epsilon_0}$$\n\n### Step 3: Solve for $E$\nCancelling the cylinder length $L$ from both sides, we get:\n$$E = \\frac{\\lambda}{2\\pi \\epsilon_0 r}$$\n\nThis indicates that the electric field varies inversely with distance ($E \\propto \\frac{1}{r}$).\nIf we write this using Coulomb's constant $k = \\frac{1}{4\\pi\\epsilon_0}$, we get:\n$$E = \\frac{2k\\lambda}{r}$$\n\nPlease let me know if you need to solve this for specific linear densities! ",
+    "formulas_used": [],
+    "latency_ms": 6686.39
+  }
+]
