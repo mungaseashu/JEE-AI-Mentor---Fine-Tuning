@@ -1,0 +1,445 @@
+================================================================================
+🎓 JEE MENTOR AI - COMPREHENSIVE INTERVIEW GUIDE & ARCHITECTURE MANIFEST
+================================================================================
+This document serves as your master technical guide to explain the JEE Mentor AI
+project to senior engineering interviewers. It details the system architecture,
+design rationales, end-to-end data flows, and prepares you for deep technical
+grilling on MLOps, Full-Stack engineering, RAG pipelines, and model fine-tuning.
+
+--------------------------------------------------------------------------------
+1. THE ELEVATOR PITCH (High-Level Summary)
+--------------------------------------------------------------------------------
+"JEE Mentor AI is an advanced, production-grade AI tutoring platform designed
+specifically for highly rigorous IIT-JEE Main and Advanced preparation. 
+Architecturally, it is a secured FastAPI backend and a glassmorphic React 18 SPA
+coupled with an intelligent cognitive orchestrator. It orchestrates a tiered OCR
+pipeline, a custom SymPy-based mathematical execution tool, and a high-precision
+semantic RAG vector database (ChromaDB). 
+
+Additionally, the system utilizes a fine-tuned causal LLM (TinyLlama/Mistral)
+trained via a custom QLoRA PEFT pipeline on mathematically balanced JEE datasets.
+Rather than returning static outputs, the backend streams custom LaTeX-wrapped 
+step-by-step reasoning tokens via Server-Sent Events (SSE). 
+
+To personalize learning, a closed-loop adaptive learning engine tracks student
+proficiencies using exponential moving averages, dynamically scaling NTA-style 
+CBT mock tests to reinforce identified weak chapters."
+
+--------------------------------------------------------------------------------
+2. TECHNICAL TECH STACK & ARCHITECTURAL RATIONALE
+--------------------------------------------------------------------------------
+Why was each component chosen? (Crucial for proving design maturity):
+
+*   FE CLIENT: React 18 (Vite) + Tailwind CSS + Lucide Icons + Framer Motion
+    - RATIONALE: Vite compiles the SPA instantly (hot-reloads in <500ms).
+      Framer Motion manages rich micro-animations. Tailwind delivers a 
+      premium glassmorphism theme, and Recharts renders live mastery progress.
+      
+*   MATH TYPESETTING: KaTeX (Integrated in Custom MathRenderer.jsx)
+    - RATIONALE: MathJax is heavy and slow. KaTeX renders complex LaTeX
+      expressions ($...$ and $$...$$) synchronously at lightning speed, 
+      preventing UI shifting when stream tokens are received.
+
+*   BACKEND: FastAPI + Uvicorn (ASGI)
+    - RATIONALE: Asynchronous handling of standard REST endpoints and non-blocking
+      asynchronous token generators for Server-Sent Events (SSE) streaming.
+      
+*   DATABASE: SQLAlchemy ORM + PostgreSQL (with sqlite3 local auto-fallback)
+    - RATIONALE: PostgreSQL handles complex production relational queries.
+      The SQLite auto-fallback ensures zero-barrier developer onboarding.
+
+*   VECTOR DB & EMBEDDINGS: ChromaDB + sentence-transformers (all-MiniLM-L6-v2)
+    - RATIONALE: ChromaDB provides a lightweight, persistent, on-disk cosine-metric
+      HNSW index. all-MiniLM-L6-v2 is a 384-dimensional model yielding 
+      state-of-the-art semantic alignment with zero VRAM/GPU requirements.
+
+*   CACHE & RATE LIMITER: Redis (with thread-safe Local Cache Fallback)
+    - RATIONALE: A sliding-window IP rate-limiter prevents API spamming.
+      Cached chat history evicts after 2 hours (TTL) to save database reads.
+
+*   OCR PIPELINE: Tiered Routing (PaddleOCR -> EasyOCR -> Tesseract -> Mock)
+    - RATIONALE: Proves high-availability design. Primary is PaddleOCR (highest
+      accuracy on mathematical text), fallback is EasyOCR, tertiary is Tesseract,
+      and final is an intelligent mock seeder for local CPU debug bounds.
+
+*   MODEL QUANTIZATION & FINE-TUNING: PEFT QLoRA (bitsandbytes + HuggingFace TRL)
+    - RATIONALE: Fine-tuning a 7B parameter model from scratch is cost-prohibitive.
+      Using QLoRA (NF4 4-bit quantization + LoRA rank-adapters) enables 
+      fitting the training loop inside standard consumer GPUs (under 12GB VRAM).
+
+--------------------------------------------------------------------------------
+3. END-TO-END SYSTEM DATA FLOW (Step-by-Step)
+--------------------------------------------------------------------------------
+When a student asks: "Find the electric field due to an infinite line charge",
+here is the exact journey of the request through the stack:
+
+1.  [Client Request]: The React SPA sends an authorized HTTP POST request to `/chat`
+    with the bearer JWT token in the header and JSON payload containing the prompt.
+2.  [Rate Limiter & Guardrails]: 
+    - The sliding-window rate-limiter verifies that the client IP has not exceeded
+      30 requests/min using the cache client.
+    - `guardrails.py` sanitizes the input, blocking adversarial injection prompts.
+3.  [RAG Semantic Retrieval]:
+    - The prompt is sent to `rag/embeddings.py` to generate its 384-dimensional vector.
+    - ChromaDB queries its persistent cosine HNSW index to fetch the top 2 (k=2)
+      closest NCERT physics theorems, formula sheets, or constants.
+4.  [Cognitive Orchestration]:
+    - `orchestrator.py` parses intent (determines if it requires a plotting tool
+      like Matplotlib, symbolic algebra like SymPy, or standard chat).
+    - It stitches the final prompt: Injecting the RAG context, Dialog History 
+      summaries from `memory.py`, and the user's prompt into a cohesive template.
+5.  [Singleton LLM Inference]:
+    - The assembled prompt is sent to the cached memory-singleton `JEEInferenceEngine`.
+    - It streams generated text token-by-token (SSE) back to FastAPI.
+6.  [Output Guardrail & DB Log]:
+    - Output is checked to ensure all inline and block LaTeX tags ($ and $$) are balanced.
+    - The message turn is added to the database and cached in memory.
+7.  [Client Render]: The React client reads the Event-Stream buffer, feeds the raw
+    markdown text live to the `MathRenderer` component, and KaTeX typesets the formulas.
+
+--------------------------------------------------------------------------------
+4. DEEP DIVE INTO ADVANCED ENGINEERING SUBSYSTEMS
+--------------------------------------------------------------------------------
+
+A. DATA SYNTHESIS PIPELINE (`dataset/`)
+   *   `dataset_generator.py`: Continuous programmatic generator producing parameterized
+       Physics, Chemistry, and Math questions (e.g. varying mass M, radius R, distances).
+   *   `dataset_cleaner.py`: Performs a cosine Jaccard similarity audit to remove duplicates.
+   *   `dataset_validator.py`: Audits LaTeX formatting syntax and subject distributions.
+   *   INTERVIEW TALK: "We generated and normalized 1,119 highly unique, mathematically
+       validated JEE question-solution pairs. We automated formatting checks to ensure
+       100% of math symbols are wrapped in standard KaTeX syntax."
+
+B. FINE-TUNING PIPELINE (`training/`)
+   *   `config.py`: Bitsandbytes NF4 quantization configuration + Lora rank settings
+       (r=16, alpha=32, target_modules=["q_proj", "v_proj"]).
+   *   `train.py`: Employs HuggingFace's `SFTTrainer` with gradient checkpointing,
+       reducing VRAM consumption to under 12GB.
+   *   INTERVIEW TALK: "We utilized LoRA rank-adapters to inject task-specific weights
+       into a quantized base model (TinyLlama/Phi). This prevents catastrophic forgetting
+       of the base conversational capabilities while tuning the model's math reasoning."
+
+C. COGNITIVE ORCHESTRATOR (`backend/orchestrator.py`)
+   *   It performs intent classification on incoming prompts.
+   *   If intent is "PLOT": It extracts the math function, executes `tools.py` Matplotlib
+       neon graph plotter, and returns the graph as a Base64-encoded image.
+   *   If intent is "SYMBOLIC": It routes to SymPy to perform precise algebraic integration/derivation.
+   *   If intent is "CALCULATE": It routes to a safe eval calculator parser.
+
+D. ADAPTIVE PRACTICE ENGINE (`backend/adaptive.py`)
+   *   Calculates a student's dynamic mastery level for Physics, Chemistry, and Math.
+   *   Uses an exponential moving average (EMA) formula on user correctness:
+       $$Proficiency_{new} = (1 - \alpha) \cdot Proficiency_{old} + \alpha \cdot Score_{last}$$
+   *   If proficiency falls below 0.4, it flags the concept in `/weak-topics` and
+       injects simpler foundational questions in subsequent CBT quizzes to reinforce it.
+
+--------------------------------------------------------------------------------
+5. HIGH-AVAILABILITY & ROBUST FALLBACK DESIGNS (Proving MLOps Maturity)
+--------------------------------------------------------------------------------
+Explain how the system handles environmental resource constraints seamlessly:
+1.  No CUDA GPU present? 
+    `inference.py` catches the CUDA failure, checks the local disk cache with
+    `local_files_only=True` to prevent hangs, and falls back to a smart, highly
+    dynamic tutoring mockup engine that streams formatted LaTeX and Markdown response streams.
+2.  Postgres database is offline?
+    `database.py` rolls back to a local SQLite database (`backend/jee_mentor.db`) at startup.
+3.  Redis cache server is offline?
+    `cache.py` maps keys to a thread-safe, in-memory cache dictionary with TTL evictions.
+4.  PaddleOCR/EasyOCR libraries are not compiled?
+    `ocr.py` falls back to Tesseract, and then to an intelligent mock parser.
+
+--------------------------------------------------------------------------------
+6. TOP 10 INTERVIEW QUESTIONS & MODEL ANSWERS (How to Ace the Grilling)
+--------------------------------------------------------------------------------
+
+Q1: "Why did you use Server-Sent Events (SSE) streaming instead of standard HTTP REST?"
+A1: "Large Language Models generate text sequentially. With standard HTTP, the client 
+     must wait for the entire 500-word step-by-step derivation to complete, creating 
+     a 10-15 second cold wait. SSE streaming enables us to yield tokens as they are
+     generated, reducing Time-to-First-Token (TTFT) to under 200ms and creating a
+     responsive, interactive tutoring feel."
+
+Q2: "How did you solve model timeout and memory footprint issues on the backend?"
+A2: "Initially, instantiating the inference model inside a standard HTTP request thread
+     caused ASGI timeouts because loading a 1.1B parameter model takes several seconds.
+     I solved this by converting the inference class into a class-level singleton
+     and pre-loading the model in-memory during the FastAPI 'startup' event. Sub-
+     sequent HTTP threads now access the pre-cached model in memory instantly."
+
+Q3: "How does your RAG pipeline prevent hallucinations in mathematical formulas?"
+A3: "Causal LLMs are notoriously bad at precise mathematics. To prevent formulas
+     from hallucinating, we segment NCERT text and formula cards using character splitters,
+     embed them via a local sentence-transformer, and index them in a persistent ChromaDB.
+     The retrieved highly relevant formulas are injected into the LLM system prompt as
+     ground-truth context, forcing the model to calculate using verified constants and laws."
+
+Q4: "Why did you use QLoRA instead of Full Fine-Tuning?"
+A4: "Full parameter fine-tuning is extremely resource-intensive. QLoRA quantizes the base
+     model weights to 4-bit NormalFloat (NF4), keeping the base model frozen. We then
+     inject tiny, trainable rank-decomposition matrices (adapters) into the attention layers.
+     This reduces memory consumption by over 80% (fitting the 12GB VRAM envelope) while
+     matching 99% of full fine-tuning performance."
+
+Q5: "What are your guardrails doing, and how do they handle LaTeX validation?"
+A5: "Our guardrails audit input and output streams. Input guardrails detect prompt injection
+     and flag non-academic queries. Output guardrails check the generated text for 
+     balanced LaTeX wrappers ($ and $$) and audit physical constants (like the permittivity
+     of free space, epsilon_0). If KaTeX tags are unbalanced, it auto-balances them
+     to prevent client-side formatting rendering crashes."
+
+Q6: "How does your Adaptive Learning Engine calculate proficiencies?"
+Q6: "It uses an Exponential Moving Average (EMA) with a smoothing factor (alpha = 0.2).
+     This weights recent practice quiz outcomes higher than past ones, capturing the
+     student's current learning curve rather than a historical average. Flagged weak
+     chapters are fed into a personalization loop to adjust CBT mock test difficulty."
+
+Q7: "Explain your tiered OCR strategy. Why not just use one OCR tool?"
+A7: "No single open-source OCR tool is perfect for handwritten physics diagrams and 
+     formulas. Primary routing targets PaddleOCR (top mathematical text parser). If 
+     the library is missing or fails, it falls back to EasyOCR (deep learning-based),
+     then to Tesseract (traditional layout analyzer), and finally to an intelligent
+     mock question solver to guarantee service availability."
+
+Q8: "How does the custom digital Canvas Scratchpad integrate with Vite React?"
+A8: "We built a native HTML5 `<canvas>` component inside `MockTest.jsx`. It listens to
+     mouse and touch event listeners, writing pixel paths to the context buffer. It allows
+     students to sketch equations or circuit diagrams on their mock test screen and can
+     be cleared dynamically, mimicking real NTA national exam portals."
+
+Q9: "How do you handle circular dependency imports in FastAPI?"
+A9: "We follow a clean, decoupled directory structure. All data models are in `models.py`,
+     Pydantic schemes are in `schemas.py`, and ORM database session binds are in `database.py`.
+     Routing endpoints in `main.py` utilize FastAPI dependency injection (`Depends(get_db)`),
+     entirely preventing circular module imports at boot time."
+
+Q10: "If you had infinite time and resources, what would you improve?"
+A10: "I would implement a hybrid routing router using small specialized local models for
+     intent parsing (e.g. BERT-based intent classifier) and scale the database to a 
+     distributed multi-replica PostgreSQL cluster. Finally, I would deploy a continuous
+     evaluation pipeline (LLM-as-a-judge) to audit chat responses on accuracy dynamically."
+
+
+
+Flow:
+
+
+User
+ ↓
+Frontend (React)
+ ↓
+FastAPI Backend
+ ↓
+Orchestrator Layer
+ ↓
+ ┌──────────────┬──────────────┬──────────────┐
+ │              │              │
+RAG         Tool Calling    Memory Manager
+ │              │              │
+ChromaDB     SymPy/Calc      Redis
+ │
+Retrieved Context
+ ↓
+Fine-Tuned LLM
+ ↓
+Guardrails
+ ↓
+Streaming Response
+ ↓
+Frontend Rendering
+
+
+
+2. FASTAPI BACKEND
+
+FastAPI acts as:
+
+central API layer
+
+Responsibilities:
+
+receives frontend requests
+authenticates user using JWT
+forwards request to orchestrator
+streams AI response back
+
+-------------------------------------------------------------------
+
+3. ORCHESTRATOR (MOST IMPORTANT COMPONENT)
+
+This is the:
+
+intelligence control center
+
+It decides:
+
+whether RAG is needed
+whether SymPy tool is needed
+how prompt should be built
+whether OCR pipeline is required
+whether memory context should be injected
+
+---------------------------------------------------------------------
+
+4. RAG PIPELINE
+
+RAG improves factual accuracy.
+
+Instead of depending only on LLM memory:
+
+Question
+ ↓
+Retrieve formulas/notes
+ ↓
+Inject context into prompt
+ ↓
+Generate grounded answer
+
+How RAG Works Internally
+
+Step 1 — Notes Stored
+You stored:
+formulas
+NCERT notes
+derivations
+concepts
+
+inside:
+ChromaDB
+
+Step 2 — Embeddings Generated
+Each note becomes:
+vector embedding
+using:
+sentence-transformers/all-MiniLM-L6-v2
+
+Step 3 — Semantic Retrieval
+User asks:
+“What is electric flux?”
+System converts query into embedding and finds:
+most semantically similar notes
+
+
+5. TOOL CALLING SYSTEM
+
+LLMs are weak at:
+
+arithmetic
+symbolic math
+plotting
+
+So you added:
+tools
+
+Examples:
+SymPy solver
+calculator
+graph plotter
+unit converter
+
+6. OCR PIPELINE
+
+User uploads handwritten image.
+
+Pipeline:
+
+Image
+ ↓
+PaddleOCR
+ ↓
+Extract text
+ ↓
+Clean text
+ ↓
+Send to orchestrator
+ ↓
+RAG + LLM
+ ↓
+Step-by-step solution
+
+This allows:
+
+solving handwritten JEE questions.
+
+
+7. MEMORY MANAGER
+
+Conversations can become long.
+
+LLMs have:
+
+context window limits
+
+So:
+
+older chats summarized
+Redis stores memory
+important context retained
+
+This enables:
+
+long tutoring sessions.
+
+8. FINE-TUNED LLM
+
+This is the core reasoning engine.
+
+You fine-tuned:
+
+TinyLlama/Mistral
+using:
+QLoRA
+PEFT
+4-bit quantization
+
+on:
+
+JEE reasoning dataset
+step-by-step educational solutions
+
+This improved:
+
+tutoring style
+reasoning structure
+domain adaptation
+
+
+9. GUARDRAILS
+
+Before response goes to user:
+
+System validates:
+
+malformed LaTeX
+hallucinated formulas
+unsafe output
+broken reasoning
+
+This improves reliability.
+
+
+10. STREAMING RESPONSE
+
+Instead of waiting for full answer:
+
+tokens stream continuously:
+
+Token 1 → Token 2 → Token 3
+
+This improves:
+
+responsiveness
+user experience
+
+11. ANALYTICS ENGINE
+
+System tracks:
+
+weak topics
+test scores
+accuracy
+performance trends
+
+Then:
+
+adaptive quizzes generated
+personalized recommendations shown

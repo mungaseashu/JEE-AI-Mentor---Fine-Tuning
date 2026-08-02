@@ -14,6 +14,7 @@ from backend.cache import jee_cache
 from backend.memory import JEEConversationMemoryManager
 from rag.retriever import JEERetriever
 from training.inference import JEEInferenceEngine
+from backend.web_search import JEEWebSearch
 
 class JEEOrchestrator:
     def __init__(self, db: Session):
@@ -67,6 +68,14 @@ class JEEOrchestrator:
         # 2. RAG Retrieval
         print("[INFO] Fetching RAG references for formula lookup...")
         rag_context = self.retriever.retrieve_context(active_prompt, k=2, subject=subject)
+        
+        # Web Search Fallback if RAG is empty
+        is_rag_empty = not rag_context or "No matching reference material" in rag_context or "No highly relevant formulas" in rag_context
+        if is_rag_empty:
+            print("[INFO] Offline RAG context is empty. Triggering Web Search fallback...")
+            web_context = JEEWebSearch.search_web(active_prompt)
+            if web_context:
+                rag_context = web_context
         
         # 3. Intent Detection to see if plotting needed
         intent = self.detect_intent(active_prompt)
@@ -145,6 +154,14 @@ class JEEOrchestrator:
         
         # 4. Fetch RAG reference contexts
         rag_context = self.retriever.retrieve_context(prompt, k=2)
+        
+        # Web Search Fallback if RAG is empty
+        is_rag_empty = not rag_context or "No matching reference material" in rag_context or "No highly relevant formulas" in rag_context
+        if is_rag_empty:
+            print("[INFO] Offline RAG context is empty. Triggering Web Search fallback...")
+            web_context = JEEWebSearch.search_web(prompt)
+            if web_context:
+                rag_context = web_context
 
         # 5. Intent detection & tool execution
         intent = self.detect_intent(prompt)
@@ -198,10 +215,16 @@ class JEEOrchestrator:
         )
 
         # Print debug logs to terminal
-        print(f"\n[ORCHESTRATOR DEBUG LOG]")
-        print(f"  - Incoming Query: '{prompt}'")
-        print(f"  - Retrieved RAG Context: '{rag_context}'")
-        print(f"  - Assembled Prompt:\n{assembled_prompt}\n")
+        try:
+            print(f"\n[ORCHESTRATOR DEBUG LOG]")
+            print(f"  - Incoming Query: '{prompt}'")
+            print(f"  - Retrieved RAG Context: '{rag_context}'")
+            print(f"  - Assembled Prompt:\n{assembled_prompt}\n")
+        except UnicodeEncodeError:
+            print(f"\n[ORCHESTRATOR DEBUG LOG (SAFE PRINT)]")
+            print(f"  - Incoming Query: '{prompt.encode('ascii', errors='replace').decode('ascii')}'")
+            print(f"  - Retrieved RAG Context: '{rag_context.encode('ascii', errors='replace').decode('ascii')}'")
+            print(f"  - Assembled Prompt:\n{assembled_prompt.encode('ascii', errors='replace').decode('ascii')}\n")
 
         # 7. Streaming response capture
         full_response = ""
@@ -209,7 +232,10 @@ class JEEOrchestrator:
             full_response += token
             yield token
 
-        print(f"  - Raw Model Output: '{full_response}'")
+        try:
+            print(f"  - Raw Model Output: '{full_response}'")
+        except UnicodeEncodeError:
+            print(f"  - Raw Model Output: '{full_response.encode('ascii', errors='replace').decode('ascii')}'")
 
         # 8. Apply Output Guardrails
         audited_res, violations = self.guardrails.validate_output(full_response)
